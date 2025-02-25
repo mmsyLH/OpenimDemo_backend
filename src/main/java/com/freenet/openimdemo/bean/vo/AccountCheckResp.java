@@ -18,6 +18,6 @@ public class AccountCheckResp {
     @Data
     public static class AccountCheckResult {
         private String userID;
-        private Integer accountStatus; // 0：未注册，1：已注册
+        private Integer accountStatus; // 0：已注册，1：未注册
     }
 } 

@@ -3,22 +3,21 @@ package com.freenet.openimdemo.controller;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
-import com.freenet.openimdemo.bean.vo.GroupMsgCallbackReq;
-import com.freenet.openimdemo.bean.vo.CallbackResp;
+import com.freenet.openimdemo.bean.vo.*;
 import com.freenet.openimdemo.constants.ApiConstants;
 import com.freenet.openimdemo.utils.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.ArrayList;
-import com.freenet.openimdemo.bean.vo.AIModelReq;
-import com.freenet.openimdemo.bean.vo.AIModelResp;
+
 import com.freenet.openimdemo.utils.OkHttpUtils;
 import com.freenet.openimdemo.utils.Utils;
 import com.freenet.openimdemo.bean.callback.CreateGroupCallbackReq;
 import com.freenet.openimdemo.config.AIServiceConfig;
 import com.freenet.openimdemo.config.HumanServiceConfig;
 import java.util.Collections;
+import com.freenet.openimdemo.bean.callback.SendGroupMsgBeforeCallbackReq;
 
 /**
  * 回调接口控制器
@@ -250,5 +249,77 @@ public class CallbackController {
             resp.setErrDlt(e.getMessage());
             return resp;
         }
+    }
+
+    /**
+     * 发送群消息前的回调
+     *
+     * @param callbackReq 回调请求参数
+     * @return 回调响应
+     */
+    @PostMapping("/callbackBeforeSendGroupMsgCommand")
+    public CallbackResp2 beforeSendGroupMsg(@RequestBody SendGroupMsgBeforeCallbackReq callbackReq) {
+        try {
+            log.info("收到发送群消息前回调: {}", callbackReq);
+            if (callbackReq.getContentType() == 1514||callbackReq.getContentType() == 1515||callbackReq.getContentType() == 1501) {
+                CallbackResp2 resp = new CallbackResp2();
+                resp.setActionCode(0);
+                resp.setErrCode(5001);
+                resp.setErrMsg("系统消息不显示");
+                resp.setErrDlt("系统消息不显示");
+                resp.setNextCode(1);
+                log.info("收到发送群消息前回调: {}", resp);
+                return resp;
+            }
+            // 1. 过滤系统消息和非文本消息
+            if (callbackReq.getContentType() != 101) {
+//                return CallbackResp.success();
+            }
+
+            // 2. 过滤AI和人工客服发送的消息
+            if (aiConfig.getUserId().equals(callbackReq.getSendID()) ||
+                humanConfig.getUserId().equals(callbackReq.getSendID())) {
+//                return CallbackResp.success();
+            }
+
+            // 3. 检查消息内容是否合法（示例：检查敏感词）
+            if (containsSensitiveWords(callbackReq.getContent())) {
+                CallbackResp2 resp = new CallbackResp2();
+                resp.setActionCode(1);
+                resp.setErrCode(5001);
+                resp.setErrMsg("消息包含敏感词");
+                resp.setErrDlt("请文明发言");
+                resp.setNextCode(1);
+                return resp;
+            }
+
+            CallbackResp2 resp = new CallbackResp2();
+            resp.setActionCode(0);
+            resp.setErrCode(0);
+            resp.setErrMsg("");
+            resp.setErrDlt("");
+            resp.setNextCode(0);
+            // 4. 允许发送消息
+            return resp;
+
+        } catch (Exception e) {
+            log.error("处理发送群消息前回调异常", e);
+            CallbackResp2 resp = new CallbackResp2();
+            resp.setActionCode(1);
+            resp.setErrCode(5001);
+            resp.setErrMsg("处理回调失败");
+            resp.setErrDlt(e.getMessage());
+            resp.setNextCode(1);
+            return resp;
+        }
+    }
+
+    /**
+     * 检查是否包含敏感词（示例方法）
+     */
+    private boolean containsSensitiveWords(String content) {
+        // 这里可以实现具体的敏感词检查逻辑
+        // 例如：使用敏感词库、调用第三方服务等
+        return false;
     }
 } 

@@ -45,7 +45,12 @@ public class ApiConstants {
         public static final String USER_REGISTER = BASE_URL + "/user/user_register";
         
         /**
-         * 获取用户信息
+         * 获取用户列表
+         */
+        public static final String GET_USERS = BASE_URL + "/user/get_users";
+        
+        /**
+         * 获取指定用户详情
          */
         public static final String GET_USERS_INFO = BASE_URL + "/user/get_users_info";
         
