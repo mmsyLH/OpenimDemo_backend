@@ -17,6 +17,8 @@ import com.freenet.openimdemo.utils.OkHttpUtils;
 import com.freenet.openimdemo.utils.Utils;
 import com.freenet.openimdemo.bean.callback.CreateGroupCallbackReq;
 import com.freenet.openimdemo.config.AIServiceConfig;
+import com.freenet.openimdemo.config.HumanServiceConfig;
+import java.util.Collections;
 
 /**
  * 回调接口控制器
@@ -28,9 +30,11 @@ import com.freenet.openimdemo.config.AIServiceConfig;
 public class CallbackController {
 
     private final AIServiceConfig aiConfig;
+    private final HumanServiceConfig humanConfig;
     
-    public CallbackController(AIServiceConfig aiConfig) {
+    public CallbackController(AIServiceConfig aiConfig, HumanServiceConfig humanConfig) {
         this.aiConfig = aiConfig;
+        this.humanConfig = humanConfig;
     }
 
     /**
@@ -44,14 +48,15 @@ public class CallbackController {
         try {
             log.info("收到群消息回调: {}", callbackReq);
             log.info("收到群消息{}", callbackReq.getContent());
-
+            
             // 1. 过滤系统消息和非文本消息
-            if (callbackReq.getContentType() != 101) { // 101表示文本消息
+            if (callbackReq.getContentType() != 101) {
                 return new CallbackResp();
             }
             
-            // 2. 过滤AI自己发送的消息
-            if (aiConfig.getUserId().equals(callbackReq.getSendID())) {
+            // 2. 过滤AI和人工客服发送的消息
+            if (aiConfig.getUserId().equals(callbackReq.getSendID()) || 
+                humanConfig.getUserId().equals(callbackReq.getSendID())) {
                 return new CallbackResp();
             }
             
