@@ -78,6 +78,11 @@ public class ApiConstants {
          * 获取已加入的群组列表
          */
         public static final String GET_JOINED_GROUP_LIST = BASE_URL + "/group/get_joined_group_list";
+        
+        /**
+         * 获取群成员列表
+         */
+        public static final String GET_GROUP_MEMBER_LIST = BASE_URL + "/group/get_group_member_list";
     }
 
     /**

@@ -127,14 +127,15 @@ public class TokenController {
     /**
      * 用户登录
      *
-     * @param loginReq 登录请求参数
+     * @param phoneNumber 电话号码
      * @return 登录结果
+     * @throws Exception 例外
      */
-    @PostMapping("/login")
-    public R<Object> login(@RequestBody LoginReq loginReq) throws Exception {
+    @GetMapping("/login")
+    public R<Object> login(String phoneNumber ) throws Exception {
         // 构建服务端登录请求，使用 LoginUser1 中的固定参数
         ServerLoginReq serverReq = new ServerLoginReq();
-        serverReq.setPhoneNumber(loginReq.getPhoneNumber());
+        serverReq.setPhoneNumber(phoneNumber);
         
         // 构建请求
         String jsonBody = JSON.toJSONString(serverReq);
@@ -166,8 +167,9 @@ public class TokenController {
             // 设置群成员（用户ID和固定的客服ID）
             List<String> memberIds = new ArrayList<>();
             memberIds.add(userID);
-            memberIds.add("10086"); // 固定的客服ID
+//            memberIds.add("10086"); // 固定的客服ID
             groupReq.setMemberUserIDs(memberIds);
+            groupReq.setOwnerUserID("10086");
             
             // 设置群信息
             AIGroupCreateReq.GroupInfo groupInfo = new AIGroupCreateReq.GroupInfo();

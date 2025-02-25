@@ -16,7 +16,7 @@ public class AIGroupCreateReq {
     /**
      * 群主ID，固定为imAdmin
      */
-    private String ownerUserID = "imAdmin";
+    private String ownerUserID;
     
     /**
      * 群组信息
@@ -38,7 +38,7 @@ public class AIGroupCreateReq {
         /**
          * 群公告
          */
-        private String notification = "notification";
+        private String notification = "智能客服为您服务";
         
         /**
          * 群介绍
