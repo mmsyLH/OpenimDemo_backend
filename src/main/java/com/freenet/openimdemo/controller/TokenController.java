@@ -209,58 +209,41 @@ public class TokenController {
      */
     @GetMapping("/login")
     public R<Object> login(String phoneNumber) throws Exception {
-        // 1. 检查用户是否已注册
-        AccountCheckReq checkReq = new AccountCheckReq();
-        List<String> checkUserIDs = new ArrayList<>();
-        checkUserIDs.add(phoneNumber); // 使用手机号作为userID
-        checkReq.setCheckUserIDs(checkUserIDs);
-        
-        // 构建检查请求
-        String checkJsonBody = JSON.toJSONString(checkReq);
-        okhttp3.Request checkRequest = new okhttp3.Request.Builder()
-                .url(ApiConstants.User.ACCOUNT_CHECK)
-                .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
-                .addHeader("token", Utils.getAdminToken())
-                .addHeader("Content-Type", "application/json")
-                .post(okhttp3.RequestBody.create(checkJsonBody, OkHttpUtils.JSON))
-                .build();
-        
-        // 发送检查请求
-        String checkResult = OkHttpUtils.post(checkRequest);
-        AccountCheckResp checkResp = JSONObject.parseObject(checkResult, AccountCheckResp.class);
-        
-        // 2. 如果用户未注册，先注册用户
-        AccountCheckResp.AccountCheckResult accountCheckResult = checkResp.getData().getResults().get(0);
-        if (checkResp.getData().getResults().get(0).getAccountStatus() == 1) {
-            // 构建注册请求
-            ServerRegisterReq serverReq = new ServerRegisterReq();
-            ServerRegisterReq.UserInfo userInfo = new ServerRegisterReq.UserInfo();
-            userInfo.setNickname("用户" + phoneNumber);
-            userInfo.setPhoneNumber(phoneNumber);
-            serverReq.setUser(userInfo);
-            
-            // 发送注册请求
-            String registerResult = OkHttpUtils.post(ApiConstants.Account.REGISTER, JSON.toJSONString(serverReq));
-            JSONObject registerResp = JSONObject.parseObject(registerResult);
-            
-            if (registerResp.getInteger("errCode") != 0) {
-                return R.fail("注册失败: " + registerResp.getString("errMsg"));
-            }
-        }
-        
-        // 3. 构建登录请求
+        // 1. 构建登录请求
         ServerLoginReq loginReq = new ServerLoginReq();
         loginReq.setPhoneNumber(phoneNumber);
         
-        // 发送登录请求
+        // 2. 发送登录请求
         String loginResult = OkHttpUtils.post(ApiConstants.Account.LOGIN, JSON.toJSONString(loginReq));
         JSONObject loginResp = JSONObject.parseObject(loginResult);
         
         if (loginResp.getInteger("errCode") == 0) {
-            // 4. 检查是否已有AI客服群聊
-            String userID = phoneNumber; // 使用手机号作为userID
+            // 3. 如果登录失败且是未注册错误，先注册用户
+            if (loginResp.getInteger("errCode") == 10004) { // 假设10004是未注册错误码
+                // 构建注册请求
+                ServerRegisterReq serverReq = new ServerRegisterReq();
+                ServerRegisterReq.UserInfo userInfo = new ServerRegisterReq.UserInfo();
+                userInfo.setNickname("用户" + phoneNumber);
+                userInfo.setPhoneNumber(phoneNumber);
+                serverReq.setUser(userInfo);
+                
+                // 发送注册请求
+                String registerResult = OkHttpUtils.post(ApiConstants.Account.REGISTER, JSON.toJSONString(serverReq));
+                JSONObject registerResp = JSONObject.parseObject(registerResult);
+                
+                if (registerResp.getInteger("errCode") != 0) {
+                    return R.fail("注册失败: " + registerResp.getString("errMsg"));
+                }
+                
+                // 注册成功后重新登录
+                loginResult = OkHttpUtils.post(ApiConstants.Account.LOGIN, JSON.toJSONString(loginReq));
+                loginResp = JSONObject.parseObject(loginResult);
+            }
             
-            // 获取已加入的群组列表
+            // 4. 获取用户ID
+            String userID = loginResp.getJSONObject("data").getString("userID");
+            
+            // 5. 获取已加入的群组列表
             JSONObject req = new JSONObject();
             req.put("fromUserID", userID);
             req.put("pagination", new JSONObject()
@@ -270,7 +253,7 @@ public class TokenController {
             okhttp3.Request request = new okhttp3.Request.Builder()
                     .url(ApiConstants.Group.GET_JOINED_GROUP_LIST)
                     .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
-                    .addHeader("token",Utils.getAdminToken() )
+                    .addHeader("token", Utils.getAdminToken())
                     .post(okhttp3.RequestBody.create(req.toJSONString(), OkHttpUtils.JSON))
                     .build();
             
@@ -278,25 +261,30 @@ public class TokenController {
             JSONObject resp = JSONObject.parseObject(result);
             
             String aiGroupID = null;
-            // 查找AI客服群聊
+            // 6. 查找AI客服群聊
             if (resp.getInteger("errCode") == 0) {
                 JSONObject data = resp.getJSONObject("data");
-                JSONArray groups = data.getJSONArray("groups");
-                for (int i = 0; i < groups.size(); i++) {
-                    JSONObject group = groups.getJSONObject(i);
-                    if (aiConfig.getUserId().equals(group.getString("ownerUserID"))) {
-                        aiGroupID = group.getString("groupID");
-                        break;
+                if (data != null && data.getJSONArray("groups") != null) {
+                    JSONArray groups = data.getJSONArray("groups");
+                    for (int i = 0; i < groups.size(); i++) {
+                        JSONObject group = groups.getJSONObject(i);
+                        if (aiConfig.getUserId().equals(group.getString("ownerUserID"))) {
+                            aiGroupID = group.getString("groupID");
+                            break;
+                        }
                     }
                 }
             }
             
-            // 如果没有找到AI客服群聊，创建新的
+            // 7. 如果没有找到AI客服群聊，创建新的
             if (aiGroupID == null) {
-                // 创建群组
                 CreateGroupReq createGroupReq = new CreateGroupReq();
                 createGroupReq.setOwnerUserID(aiConfig.getUserId());
                 createGroupReq.setMemberUserIDs(Collections.singletonList(userID));
+                createGroupReq.getGroupInfo().setGroupName(aiConfig.getGroup().getName());
+                createGroupReq.getGroupInfo().setNotification(aiConfig.getGroup().getNotification());
+                createGroupReq.getGroupInfo().setIntroduction(aiConfig.getGroup().getIntroduction());
+                createGroupReq.getGroupInfo().setFaceURL(aiConfig.getGroup().getFaceUrl());
                 
                 request = new okhttp3.Request.Builder()
                         .url(ApiConstants.Group.CREATE_GROUP)
@@ -315,8 +303,8 @@ public class TokenController {
                 }
             }
             
-            // 将AI群聊ID添加到登录响应中
-            loginResp.put("aiGroupID", aiGroupID);
+            // 8. 将AI群聊ID添加到登录响应中
+            loginResp.getJSONObject("data").put("aiGroupID", aiGroupID);
         }
         
         return R.ok(loginResp);
