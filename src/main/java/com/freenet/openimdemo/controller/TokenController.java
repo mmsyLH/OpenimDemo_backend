@@ -13,6 +13,8 @@ import com.freenet.openimdemo.bean.vo.LoginReq;
 import com.freenet.openimdemo.bean.vo.ServerLoginReq;
 import com.freenet.openimdemo.bean.vo.AIGroupCreateReq;
 import com.freenet.openimdemo.utils.Utils;
+import com.freenet.openimdemo.bean.vo.AccountCheckReq;
+import com.freenet.openimdemo.bean.vo.AccountCheckResp;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -132,15 +134,47 @@ public class TokenController {
      * @throws Exception 例外
      */
     @GetMapping("/login")
-    public R<Object> login(String phoneNumber ) throws Exception {
-        // 构建服务端登录请求，使用 LoginUser1 中的固定参数
+    public R<Object> login(String phoneNumber) throws Exception {
+        // 1. 检查用户是否已注册
+        AccountCheckReq checkReq = new AccountCheckReq();
+        List<String> checkUserIDs = new ArrayList<>();
+        checkUserIDs.add(phoneNumber); // 使用手机号作为userID
+        checkReq.setCheckUserIDs(checkUserIDs);
+        
+        // 构建检查请求
+        String checkJsonBody = JSON.toJSONString(checkReq);
+        okhttp3.Request checkRequest = new okhttp3.Request.Builder()
+                .url(ApiConstants.User.ACCOUNT_CHECK)
+                .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
+                .addHeader("token", Utils.getAdminToken())
+                .addHeader("Content-Type", "application/json")
+                .post(okhttp3.RequestBody.create(checkJsonBody, OkHttpUtils.JSON))
+                .build();
+        
+        // 发送检查请求
+        String checkResult = OkHttpUtils.post(checkRequest);
+        AccountCheckResp checkResp = JSONObject.parseObject(checkResult, AccountCheckResp.class);
+        
+        // 2. 如果未注册，先进行注册
+        if (checkResp.getErrCode() == 0 && 
+            !checkResp.getData().getResults().isEmpty() && 
+            checkResp.getData().getResults().get(0).getAccountStatus() == 0) {
+            
+            // 构建注册请求
+            RegisterReq registerReq = new RegisterReq();
+            registerReq.setPhoneNumber(phoneNumber);
+            registerReq.setNickname("用户" + phoneNumber); // 使用默认昵称
+            
+            // 发送注册请求
+            register(registerReq);
+        }
+        
+        // 3. 进行登录
         ServerLoginReq serverReq = new ServerLoginReq();
         serverReq.setPhoneNumber(phoneNumber);
         
-        // 构建请求
-        String jsonBody = JSON.toJSONString(serverReq);
-        
-        // 构建登录请求对象
+        // 构建登录请求
+        String loginJsonBody = JSON.toJSONString(serverReq);
         okhttp3.Request loginRequest = new okhttp3.Request.Builder()
                 .url(ApiConstants.Account.LOGIN)
                 .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
@@ -150,14 +184,14 @@ public class TokenController {
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Origin", "http://localhost:3003")
                 .addHeader("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Mobile Safari/537.36")
-                .post(okhttp3.RequestBody.create(jsonBody, OkHttpUtils.JSON))
+                .post(okhttp3.RequestBody.create(loginJsonBody, OkHttpUtils.JSON))
                 .build();
         
         // 发送登录请求并获取响应
         String loginResult = OkHttpUtils.post(loginRequest);
         JSONObject loginResponse = JSONObject.parseObject(loginResult);
         
-        // 如果登录成功，创建AI群聊
+        // 4. 如果登录成功，创建AI群聊
         if (loginResponse.getInteger("errCode") == 0) {
             String userID = loginResponse.getJSONObject("data").getString("userID");
             
@@ -167,7 +201,6 @@ public class TokenController {
             // 设置群成员（用户ID和固定的客服ID）
             List<String> memberIds = new ArrayList<>();
             memberIds.add(userID);
-//            memberIds.add("10086"); // 固定的客服ID
             groupReq.setMemberUserIDs(memberIds);
             groupReq.setOwnerUserID("10086");
             

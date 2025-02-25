@@ -34,12 +34,14 @@ public class AIGroupCreateReq {
          * 群名称
          */
         private String groupName = "智能客服";
-        
+//        private String groupName = "智能客服";
+
         /**
          * 群公告
          */
-        private String notification = "智能客服为您服务";
-        
+        private String notification = "";
+//        private String notification = "智能客服为您服务";
+
         /**
          * 群介绍
          */

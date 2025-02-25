@@ -1,14 +1,21 @@
 package com.freenet.openimdemo.constants;
 
+import com.freenet.openimdemo.config.OpenIMConfig;
+import jakarta.annotation.PostConstruct;
+import org.springframework.stereotype.Component;
+
 /**
  * API接口地址常量类
  */
+@Component
 public class ApiConstants {
+    private static String BASE_URL;
+    private static String ACCOUNT_BASE_URL;
     
-    /**
-     * API服务器基础地址
-     */
-    private static final String BASE_URL = "http://192.168.80.39:10002";
+    public ApiConstants(OpenIMConfig openIMConfig) {
+        BASE_URL = openIMConfig.getServer().getUrl();
+        ACCOUNT_BASE_URL = openIMConfig.getAccount().getUrl();
+    }
     
     /**
      * 测试用管理员token
@@ -19,15 +26,13 @@ public class ApiConstants {
      * 认证相关接口
      */
     public static class Auth {
-        /**
-         * 获取管理员Token
-         */
         public static final String GET_ADMIN_TOKEN = BASE_URL + "/auth/get_admin_token";
-        
-        /**
-         * 获取用户Token
-         */
         public static final String GET_USER_TOKEN = BASE_URL + "/auth/get_user_token";
+        
+        @PostConstruct
+        public void init() {
+            // This method is empty as the static fields are initialized in the constructor
+        }
     }
 
     /**
@@ -53,6 +58,11 @@ public class ApiConstants {
          * 获取所有用户ID
          */
         public static final String GET_ALL_USERS_UID = BASE_URL + "/user/get_all_users_uid";
+        
+        /**
+         * 账号检查
+         */
+        public static final String ACCOUNT_CHECK = BASE_URL + "/user/account_check";
     }
 
     /**
@@ -137,11 +147,11 @@ public class ApiConstants {
         /**
          * 用户注册
          */
-        public static final String REGISTER = "http://192.168.80.39:10008/account/register";
+        public static final String REGISTER = ACCOUNT_BASE_URL + "/account/register";
         
         /**
          * 用户登录
          */
-        public static final String LOGIN = "http://192.168.80.39:10008/account/login";
+        public static final String LOGIN = ACCOUNT_BASE_URL + "/account/login";
     }
 } 
