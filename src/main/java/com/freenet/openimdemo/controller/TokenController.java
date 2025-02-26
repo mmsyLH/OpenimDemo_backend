@@ -285,8 +285,9 @@ public class TokenController {
                 createGroupReq.setMemberUserIDs(Collections.singletonList(userID));
                 GroupInfo groupInfo = new GroupInfo();
                 groupInfo.setGroupName(aiConfig.getGroup().getName());
-                groupInfo.setNotification(aiConfig.getGroup().getNotification());
-                groupInfo.setIntroduction(aiConfig.getGroup().getIntroduction());
+                //不用设置群公告和群介绍
+//                groupInfo.setNotification(aiConfig.getGroup().getNotification());
+//                groupInfo.setIntroduction(aiConfig.getGroup().getIntroduction());
                 groupInfo.setFaceURL(aiConfig.getGroup().getFaceUrl());
                 createGroupReq.setGroupInfo(groupInfo);
                 

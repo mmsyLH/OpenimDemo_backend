@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: openimDEMO
+  main:
+    banner-mode: off
+server:
+  port: 10006
+
+openim:
+  server:
+    url: http://192.168.80.39:10002
+  account:
+    url: http://192.168.80.39:10008
+  admin:
+    user-id: imAdmin
+    secret: openIM123
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySUQiOiJpbUFkbWluIiwiUGxhdGZvcm1JRCI6MTAsImV4cCI6MTc0Nzg4MzkzOCwiaWF0IjoxNzQwMTA3OTMzfQ.Do4DD4xm2bWaB96ROjGQm993gJQB6v0z8WESjCcGnlc
+
+ai:
+  service:
+    user-id: 10086
+    model-api: https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions
+    api-key: sk-1d55ab1212d04341a03844a63b1ee041
+    group:
+      name: 智能客服
+      notification: 智能客服为您服务
+      introduction: 智能客服介绍
+      face-url: https://lhwaimai.oss-cn-beijing.aliyuncs.com/50d41e3a-5054-4746-9d31-7b72481a347b.png
+
+human:
+  service:
+    user-id: 7682775387
+    nickname: 人工客服
+    face-url: https://lh-assets.oss-cn-beijing.aliyuncs.com/assets/imgs/logo/kefu.jpeg
+
+cors:
+  allowed-origins: http://localhost:3003 
