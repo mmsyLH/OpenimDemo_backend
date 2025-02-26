@@ -17,11 +17,4 @@ public class TokenResponse implements Serializable {
     private String errMsg;
     private String errDlt;
     private TokenData data;
-
-    @Data
-    public static class TokenData implements Serializable {
-        private static final long serialVersionUID = 10086L;
-        private String token;
-        private Long expireTimeSeconds;
-    }
 } 

@@ -216,10 +216,10 @@ public class TokenController {
         // 2. 发送登录请求
         String loginResult = OkHttpUtils.post(ApiConstants.Account.LOGIN, JSON.toJSONString(loginReq));
         JSONObject loginResp = JSONObject.parseObject(loginResult);
-        
-        if (loginResp.getInteger("errCode") == 0) {
-            // 3. 如果登录失败且是未注册错误，先注册用户
-            if (loginResp.getInteger("errCode") == 10004) { // 假设10004是未注册错误码
+
+        String adminToken = Utils.getAdminToken();
+        // 3. 如果登录失败且是未注册错误，先注册用户
+            if (loginResp.getInteger("errCode") == 20002) { // 假设20002是未注册错误码
                 // 构建注册请求
                 ServerRegisterReq serverReq = new ServerRegisterReq();
                 ServerRegisterReq.UserInfo userInfo = new ServerRegisterReq.UserInfo();
@@ -253,7 +253,7 @@ public class TokenController {
             okhttp3.Request request = new okhttp3.Request.Builder()
                     .url(ApiConstants.Group.GET_JOINED_GROUP_LIST)
                     .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
-                    .addHeader("token", Utils.getAdminToken())
+                    .addHeader("token",adminToken)
                     .post(okhttp3.RequestBody.create(req.toJSONString(), OkHttpUtils.JSON))
                     .build();
             
@@ -270,6 +270,8 @@ public class TokenController {
                         JSONObject group = groups.getJSONObject(i);
                         if (aiConfig.getUserId().equals(group.getString("ownerUserID"))) {
                             aiGroupID = group.getString("groupID");
+                            // 找到AI群聊后，将群组信息添加到登录响应中
+                            loginResp.put("groupInfo", group);
                             break;
                         }
                     }
@@ -281,32 +283,36 @@ public class TokenController {
                 CreateGroupReq createGroupReq = new CreateGroupReq();
                 createGroupReq.setOwnerUserID(aiConfig.getUserId());
                 createGroupReq.setMemberUserIDs(Collections.singletonList(userID));
-                createGroupReq.getGroupInfo().setGroupName(aiConfig.getGroup().getName());
-                createGroupReq.getGroupInfo().setNotification(aiConfig.getGroup().getNotification());
-                createGroupReq.getGroupInfo().setIntroduction(aiConfig.getGroup().getIntroduction());
-                createGroupReq.getGroupInfo().setFaceURL(aiConfig.getGroup().getFaceUrl());
+                GroupInfo groupInfo = new GroupInfo();
+                groupInfo.setGroupName(aiConfig.getGroup().getName());
+                groupInfo.setNotification(aiConfig.getGroup().getNotification());
+                groupInfo.setIntroduction(aiConfig.getGroup().getIntroduction());
+                groupInfo.setFaceURL(aiConfig.getGroup().getFaceUrl());
+                createGroupReq.setGroupInfo(groupInfo);
                 
                 request = new okhttp3.Request.Builder()
                         .url(ApiConstants.Group.CREATE_GROUP)
                         .addHeader("operationID", String.valueOf(System.currentTimeMillis()))
-                        .addHeader("token", Utils.getAdminToken())
+                        .addHeader("token", adminToken)
                         .post(okhttp3.RequestBody.create(JSON.toJSONString(createGroupReq), OkHttpUtils.JSON))
                         .build();
                 
                 result = OkHttpUtils.post(request);
-                resp = JSONObject.parseObject(result);
-                
-                if (resp.getInteger("errCode") == 0) {
-                    aiGroupID = resp.getJSONObject("data").getString("groupID");
-                    // 发送欢迎消息
-                    sendAIWelcomeMessage(aiGroupID);
+                CreateGroupResp createGroupResp= JSONObject.parseObject(result, CreateGroupResp.class);
+
+                if (createGroupResp!= null && createGroupResp.getErrCode() == 0) {
+                    CreateGroupResp.GroupRespData data = createGroupResp.getData();
+                    if (data!= null) {
+                            groupInfo = data.getGroupInfo();
+                        if (groupInfo!= null) {
+                            aiGroupID = groupInfo.getGroupID();
+                            // 发送欢迎消息
+                            sendAIWelcomeMessage(aiGroupID);
+                            loginResp.put("groupInfo", groupInfo);
+                        }
+                    }
                 }
             }
-            
-            // 8. 将AI群聊ID添加到登录响应中
-            loginResp.getJSONObject("data").put("aiGroupID", aiGroupID);
-        }
-        
         return R.ok(loginResp);
     }
 }
